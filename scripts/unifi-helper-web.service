@@ -1,0 +1,25 @@
+[Unit]
+Description=UniFi Helper Web App
+After=network.target
+
+[Service]
+Type=simple
+User=__RUN_AS_USER__
+WorkingDirectory=__APP_DIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APP_DIR__/.venv/bin/python -m unifi_audit.webapp --host __BIND_HOST__ --port __BIND_PORT__ --max-upload-mb __MAX_UPLOAD_MB__
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=20
+TimeoutStopSec=15
+KillSignal=SIGINT
+KillMode=mixed
+MemoryMax=__MEMORY_MAX__
+MemoryHigh=__MEMORY_HIGH__
+CPUQuota=200%
+TasksMax=200
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

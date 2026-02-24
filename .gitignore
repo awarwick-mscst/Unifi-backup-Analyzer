@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Runtime / local data
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# Backup artifacts (sensitive)
+*.unf
+*.ufb
+*.enc
+sanitized-backup.json
+sanitized-backup.zip
+report.json
+report.html
+remediation.csv
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test output
+test-results/
+coverage/

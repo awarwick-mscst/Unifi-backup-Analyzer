@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UniFi Helper - Report</title>
+  <style>
+    :root {
+      --bg: #eef5ff;
+      --ink: #0f2234;
+      --muted: #4d6277;
+      --line: #d7e2ee;
+      --card: #ffffff;
+      --high: #b42318;
+      --medium: #b54708;
+      --low: #175cd3;
+      --ok: #027a48;
+      --bad: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -15%, #d7e7ff 20%, transparent 60%),
+        radial-gradient(900px 420px at 105% -12%, #d8f6ea 20%, transparent 58%),
+        linear-gradient(180deg, #e7f0fb, var(--bg));
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 26px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 14px 30px rgba(7, 23, 44, .08);
+    }
+    h1, h2, h3 { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-size: clamp(1.8rem, 3.4vw, 2.4rem); }
+    .meta { color: var(--muted); margin: 2px 0; }
+    .ver {
+      display: inline-block;
+      color: var(--muted);
+      font-size: .88rem;
+      border: 1px solid var(--line);
+      background: #f5f9ff;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 10px;
+      background: #fbfdff;
+    }
+    .pill b { display: block; font-size: 1.25rem; margin-top: 2px; }
+    .high { color: var(--high); }
+    .medium { color: var(--medium); }
+    .low { color: var(--low); }
+    .gate-pass { color: var(--ok); font-weight: 700; }
+    .gate-fail { color: var(--bad); font-weight: 700; }
+    .btnbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid #c5d7ee;
+      border-radius: 10px;
+      color: #0f3d8d;
+      background: #eff5ff;
+      padding: 9px 12px;
+      font-weight: 700;
+      font-size: .94rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      padding: 10px;
+    }
+    th { background: #f7faff; }
+    .sev-HIGH { color: var(--high); font-weight: 700; }
+    .sev-MEDIUM { color: var(--medium); font-weight: 700; }
+    .sev-LOW { color: var(--low); font-weight: 700; }
+    .chip {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      border: 1px solid #cfe0f4;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: .8rem;
+      color: #274a6b;
+      background: #f3f8ff;
+      white-space: nowrap;
+    }
+    @media (max-width: 940px) {
+      .grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+    @media (max-width: 650px) {
+      .grid { grid-template-columns: 1fr; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr {
+        border-top: 1px solid var(--line);
+        padding: 8px 0;
+      }
+      td {
+        border: 0;
+        padding: 4px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>Audit Report</h1>
+      <span class="ver">Version {{ app_version }}</span>
+      <p class="meta">Backup: {{ report.backup_path }}</p>
+      <p class="meta">Profile: {{ report.profile }}</p>
+      <p class="meta">Platform: {{ report.stats.get("platform", "unknown") }}</p>
+      <p class="meta">Platform Variant: {{ report.stats.get("platform_variant", "unknown") }}</p>
+      <p class="meta">Score: <b>{{ report.score }}/100 (Grade {{ report.grade }})</b></p>
+      <p class="meta">
+        Strict Gate:
+        <span class="{{ 'gate-fail' if gate_status == 'fail' else 'gate-pass' }}">
+          {{ 'FAILED' if gate_status == 'fail' else 'PASSED' }}
+        </span>
+        {% if strict %}(HIGH findings gate active){% endif %}
+        {% if strict_score_min is not none %}(score minimum: {{ strict_score_min }}){% endif %}
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Summary</h2>
+      <div class="grid">
+        <div class="pill">High findings<b class="high">{{ severity_counts["HIGH"] }}</b></div>
+        <div class="pill">Medium findings<b class="medium">{{ severity_counts["MEDIUM"] }}</b></div>
+        <div class="pill">Low findings<b class="low">{{ severity_counts["LOW"] }}</b></div>
+        <div class="pill">Total findings<b>{{ report.findings|length }}</b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Downloads</h2>
+      <div class="btnbar">
+        <a class="btn" href="/download/{{ token }}/html">Download HTML</a>
+        <a class="btn" href="/download/{{ token }}/json">Download JSON</a>
+        <a class="btn" href="/download/{{ token }}/csv">Download CSV</a>
+        <a class="btn" href="/download/{{ token }}/text">Download Text</a>
+        <a class="btn" href="/new">New Scan</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Findings</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Detail</th>
+            <th>Recommendation</th>
+            <th>Controls</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in report.findings %}
+          <tr>
+            <td class="sev-{{ f.severity|upper }}">{{ f.severity }}</td>
+            <td>{{ f.category }}</td>
+            <td>{{ f.title }}</td>
+            <td>{{ f.detail }}</td>
+            <td>{{ f.recommendation }}</td>
+            <td>
+              {% for c in f.cis_controls %}
+              <span class="chip">{{ c }}</span>
+              {% endfor %}
+              {% for c in f.nist_controls %}
+              <span class="chip">{{ c }}</span>
+              {% endfor %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6">No findings detected.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
