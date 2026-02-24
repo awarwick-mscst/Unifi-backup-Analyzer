@@ -5,6 +5,7 @@ Offline UniFi backup auditing toolkit for Debian 12/13 LXC.
 ## Features
 - Analyze UniFi backups (`.unf`, `.zip`, tar/gzip variants where possible)
 - Security/performance findings with CIS/NIST-style mappings
+- Rule-based compliance matrix (35 controls in `cis-nist` / `strict-enterprise`)
 - Reports: `text`, `json`, `html`, `csv`
 - Web UI with:
   - Analyze flow
@@ -12,7 +13,7 @@ Offline UniFi backup auditing toolkit for Debian 12/13 LXC.
   - Backup password input for encrypted backups
   - Version badge
 - Cloud Key-aware platform detection (`gen1`, `gen2`, `gen2-plus`)
-- Strict CI gates (`--strict`, `--strict-score-min`)
+- Strict CI gates (`--strict`, `--strict-score-min`, `--strict-unknown`)
 
 ## Requirements
 - Python 3.10+
@@ -33,6 +34,13 @@ Analyze:
 python -m unifi_audit.cli /path/to/backup.unf --profile cis-nist
 ```
 
+Profiles:
+- `baseline`
+- `cis-lite`
+- `nist-lite`
+- `cis-nist`
+- `strict-enterprise`
+
 Encrypted backup:
 ```bash
 python -m unifi_audit.cli /path/to/backup.unf --backup-password 'your-password'
@@ -49,14 +57,24 @@ Strict gates:
 ```bash
 python -m unifi_audit.cli /path/to/backup.unf --strict
 python -m unifi_audit.cli /path/to/backup.unf --strict-score-min 80
+python -m unifi_audit.cli /path/to/backup.unf --strict-unknown
 python -m unifi_audit.cli /path/to/backup.unf --strict --strict-score-min 80
 ```
+
+Compliance output model:
+- explicit rule IDs with status: `pass` / `fail` / `unknown`
+- rule metadata: rationale, evidence, remediation, confidence, control mappings, references
+- failed rules are mapped into findings for risk scoring/strict gates
+- separate compliance score/grade from risk score/grade
+- `strict-enterprise` profile gate requires zero failed and zero unknown rules
 
 Exit codes:
 - `0` success
 - `2` runtime/validation error
 - `3` strict HIGH-finding gate failed
 - `4` strict score gate failed
+- `5` strict unknown gate failed
+- `6` strict-enterprise profile gate failed
 
 ## Web App
 Run:

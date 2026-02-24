@@ -131,7 +131,7 @@ def create_app(max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB):
         backup_password = (request.form.get("backup_password") or "").strip() or None
 
         profile = request.form.get("profile", "cis-nist")
-        if profile not in {"baseline", "cis-nist"}:
+        if profile not in {"baseline", "cis-nist", "cis-lite", "nist-lite", "strict-enterprise"}:
             profile = "cis-nist"
 
         strict = request.form.get("strict") == "on"

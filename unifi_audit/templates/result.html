@@ -11,11 +11,27 @@
       --muted: #4d6277;
       --line: #d7e2ee;
       --card: #ffffff;
+      --surface-2: #f7faff;
+      --surface-3: #fbfdff;
       --high: #b42318;
       --medium: #b54708;
       --low: #175cd3;
       --ok: #027a48;
       --bad: #b42318;
+    }
+    :root[data-theme="dark"] {
+      --bg: #111b29;
+      --ink: #e7eef8;
+      --muted: #9fb2c7;
+      --line: #2a3a4d;
+      --card: #162334;
+      --surface-2: #1a2a3e;
+      --surface-3: #1c2e43;
+      --high: #ff7f73;
+      --medium: #ffb067;
+      --low: #8db7ff;
+      --ok: #4cd28f;
+      --bad: #ff7f73;
     }
     * { box-sizing: border-box; }
     body {
@@ -27,6 +43,12 @@
         radial-gradient(900px 420px at 105% -12%, #d8f6ea 20%, transparent 58%),
         linear-gradient(180deg, #e7f0fb, var(--bg));
       min-height: 100vh;
+    }
+    :root[data-theme="dark"] body {
+      background:
+        radial-gradient(1200px 500px at 10% -15%, #1b2940 20%, transparent 60%),
+        radial-gradient(900px 420px at 105% -12%, #183b35 20%, transparent 58%),
+        linear-gradient(180deg, #0d1724, var(--bg));
     }
     .wrap {
       max-width: 1200px;
@@ -43,6 +65,13 @@
     }
     h1, h2, h3 { margin-top: 0; }
     h1 { margin-bottom: 8px; font-size: clamp(1.8rem, 3.4vw, 2.4rem); }
+    .headbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
     .meta { color: var(--muted); margin: 2px 0; }
     .ver {
       display: inline-block;
@@ -54,6 +83,25 @@
       padding: 2px 8px;
       margin-bottom: 8px;
     }
+    .themectl {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .themectl select {
+      width: auto;
+      min-width: 112px;
+      padding: 6px 9px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #f7fbff;
+    }
+    :root[data-theme="dark"] .themectl select {
+      background: #132133;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -63,7 +111,7 @@
       border: 1px solid var(--line);
       border-radius: 11px;
       padding: 10px;
-      background: #fbfdff;
+      background: var(--surface-3);
     }
     .pill b { display: block; font-size: 1.25rem; margin-top: 2px; }
     .high { color: var(--high); }
@@ -79,10 +127,10 @@
     .btn {
       display: inline-block;
       text-decoration: none;
-      border: 1px solid #c5d7ee;
+      border: 1px solid var(--line);
       border-radius: 10px;
-      color: #0f3d8d;
-      background: #eff5ff;
+      color: var(--ink);
+      background: var(--surface-2);
       padding: 9px 12px;
       font-weight: 700;
       font-size: .94rem;
@@ -98,19 +146,19 @@
       vertical-align: top;
       padding: 10px;
     }
-    th { background: #f7faff; }
+    th { background: var(--surface-2); }
     .sev-HIGH { color: var(--high); font-weight: 700; }
     .sev-MEDIUM { color: var(--medium); font-weight: 700; }
     .sev-LOW { color: var(--low); font-weight: 700; }
     .chip {
       display: inline-block;
       margin: 2px 4px 2px 0;
-      border: 1px solid #cfe0f4;
+      border: 1px solid var(--line);
       border-radius: 999px;
       padding: 2px 8px;
       font-size: .8rem;
-      color: #274a6b;
-      background: #f3f8ff;
+      color: var(--ink);
+      background: var(--surface-2);
       white-space: nowrap;
     }
     @media (max-width: 940px) {
@@ -134,13 +182,23 @@
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>Audit Report</h1>
+      <div class="headbar">
+        <h1>Audit Report</h1>
+        <label class="themectl" for="theme-select">
+          Theme
+          <select id="theme-select" aria-label="Theme">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
       <span class="ver">Version {{ app_version }}</span>
       <p class="meta">Backup: {{ report.backup_path }}</p>
       <p class="meta">Profile: {{ report.profile }}</p>
-      <p class="meta">Platform: {{ report.stats.get("platform", "unknown") }}</p>
-      <p class="meta">Platform Variant: {{ report.stats.get("platform_variant", "unknown") }}</p>
       <p class="meta">Score: <b>{{ report.score }}/100 (Grade {{ report.grade }})</b></p>
+      <p class="meta">Compliance: <b>{{ report.stats.get("compliance_score", 0) }}/100 (Grade {{ report.stats.get("compliance_grade", "F") }})</b></p>
+      <p class="meta">Rules: pass={{ report.stats.get("rules_pass", 0) }} fail={{ report.stats.get("rules_fail", 0) }} unknown={{ report.stats.get("rules_unknown", 0) }}</p>
       <p class="meta">
         Strict Gate:
         <span class="{{ 'gate-fail' if gate_status == 'fail' else 'gate-pass' }}">
@@ -157,7 +215,7 @@
         <div class="pill">High findings<b class="high">{{ severity_counts["HIGH"] }}</b></div>
         <div class="pill">Medium findings<b class="medium">{{ severity_counts["MEDIUM"] }}</b></div>
         <div class="pill">Low findings<b class="low">{{ severity_counts["LOW"] }}</b></div>
-        <div class="pill">Total findings<b>{{ report.findings|length }}</b></div>
+        <div class="pill">Rules failed<b>{{ report.stats.get("rules_fail", 0) }}</b></div>
       </div>
     </section>
 
@@ -173,6 +231,102 @@
     </section>
 
     <section class="card">
+      <h2>Rule Matrix</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Status</th>
+            <th>Severity</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Rationale</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.rules %}
+          <tr>
+            <td>{{ r.rule_id }}</td>
+            <td>{{ r.status }}</td>
+            <td class="sev-{{ r.severity|upper }}">{{ r.severity }}</td>
+            <td>{{ r.category }}</td>
+            <td>{{ r.title }}</td>
+            <td>{{ r.rationale }}</td>
+            <td>{{ r.confidence }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7">No rules evaluated.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Evidence Debug</h2>
+      <p class="meta">Unknown rules: {{ report.stats.get("rules_unknown", 0) }}</p>
+      <p class="meta">Unknown rule IDs: {{ report.stats.get("unknown_rule_ids", []) | join(", ") if report.stats.get("unknown_rule_ids") else "none" }}</p>
+      <p class="meta">WLAN candidates found: {{ report.stats.get("wlan_candidate_count", 0) }}</p>
+      <h3>Unknown Rule Reasons</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Title</th>
+            <th>Rationale</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.rules if r.status == "unknown" %}
+          <tr>
+            <td>{{ r.rule_id }}</td>
+            <td>{{ r.title }}</td>
+            <td>{{ r.rationale }}</td>
+            <td>{{ r.confidence }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4">No unknown rules.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <h3>Top Collections</h3>
+      <p class="meta">
+        {% if report.stats.get("collection_doc_counts_top") %}
+          {% for item in report.stats.get("collection_doc_counts_top", []) %}
+            <span class="chip">{{ item[0] }}: {{ item[1] }}</span>
+          {% endfor %}
+        {% else %}
+          none
+        {% endif %}
+      </p>
+      <h3>WLAN Key Sample</h3>
+      <p class="meta">
+        {% if report.stats.get("wlan_key_sample") %}
+          {% for key in report.stats.get("wlan_key_sample", []) %}
+            <span class="chip">{{ key }}</span>
+          {% endfor %}
+        {% else %}
+          none
+        {% endif %}
+      </p>
+      <h3>Settings Token Sample</h3>
+      <p class="meta">
+        {% if report.stats.get("setting_token_sample") %}
+          {% for token in report.stats.get("setting_token_sample", []) %}
+            <span class="chip">{{ token }}</span>
+          {% endfor %}
+        {% else %}
+          none
+        {% endif %}
+      </p>
+    </section>
+
+    <section class="card">
       <h2>Findings</h2>
       <table>
         <thead>
@@ -182,7 +336,7 @@
             <th>Title</th>
             <th>Detail</th>
             <th>Recommendation</th>
-            <th>Controls</th>
+            <th>Metadata</th>
           </tr>
         </thead>
         <tbody>
@@ -194,11 +348,16 @@
             <td>{{ f.detail }}</td>
             <td>{{ f.recommendation }}</td>
             <td>
+              <span class="chip">{{ f.rule_id }}</span>
+              <span class="chip">confidence: {{ f.confidence }}</span>
               {% for c in f.cis_controls %}
               <span class="chip">{{ c }}</span>
               {% endfor %}
               {% for c in f.nist_controls %}
               <span class="chip">{{ c }}</span>
+              {% endfor %}
+              {% for r in f.references %}
+              <span class="chip">{{ r }}</span>
               {% endfor %}
             </td>
           </tr>
@@ -211,5 +370,32 @@
       </table>
     </section>
   </main>
+  <script>
+    (function () {
+      const key = "unifi_helper_theme";
+      const root = document.documentElement;
+      const select = document.getElementById("theme-select");
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+      function resolve(theme) {
+        return theme === "auto" ? (media.matches ? "dark" : "light") : theme;
+      }
+      function apply(theme) {
+        root.setAttribute("data-theme", resolve(theme));
+      }
+
+      const saved = localStorage.getItem(key) || "auto";
+      select.value = saved;
+      apply(saved);
+
+      select.addEventListener("change", function () {
+        localStorage.setItem(key, select.value);
+        apply(select.value);
+      });
+      media.addEventListener("change", function () {
+        if ((localStorage.getItem(key) || "auto") === "auto") apply("auto");
+      });
+    })();
+  </script>
 </body>
 </html>

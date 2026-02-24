@@ -16,28 +16,38 @@ def to_json(report: AuditReport) -> str:
 def to_csv(report: AuditReport) -> str:
     buf = StringIO()
     fieldnames = [
+        "rule_id",
+        "status",
         "severity",
         "category",
         "title",
         "detail",
+        "rationale",
         "recommendation",
+        "confidence",
         "cis_controls",
         "nist_controls",
+        "references",
         "evidence",
     ]
     writer = DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
-    for finding in report.findings:
+    for rule in report.rules:
         writer.writerow(
             {
-                "severity": finding.severity,
-                "category": finding.category,
-                "title": finding.title,
-                "detail": finding.detail,
-                "recommendation": finding.recommendation,
-                "cis_controls": "; ".join(finding.cis_controls),
-                "nist_controls": "; ".join(finding.nist_controls),
-                "evidence": json.dumps(finding.evidence, default=str),
+                "rule_id": rule.rule_id,
+                "status": rule.status,
+                "severity": rule.severity,
+                "category": rule.category,
+                "title": rule.title,
+                "detail": rule.rationale,
+                "rationale": rule.rationale,
+                "recommendation": rule.recommendation,
+                "confidence": rule.confidence,
+                "cis_controls": "; ".join(rule.cis_controls),
+                "nist_controls": "; ".join(rule.nist_controls),
+                "references": "; ".join(rule.references),
+                "evidence": json.dumps(rule.evidence, default=str),
             }
         )
     return buf.getvalue()
@@ -49,6 +59,14 @@ def to_text(report: AuditReport) -> str:
     lines.append(f"Backup: {report.backup_path}")
     lines.append(f"Profile: {report.profile}")
     lines.append(f"Overall score: {report.score}/100 (Grade {report.grade})")
+    lines.append(
+        f"Compliance score: {report.stats.get('compliance_score', 0)}/100 (Grade {report.stats.get('compliance_grade', 'F')})"
+    )
+    lines.append("")
+    lines.append("Rule Matrix:")
+    lines.append(
+        f"  pass={report.stats.get('rules_pass', 0)} fail={report.stats.get('rules_fail', 0)} unknown={report.stats.get('rules_unknown', 0)}"
+    )
     lines.append("")
     lines.append("Stats:")
     for key, value in report.stats.items():
@@ -63,6 +81,7 @@ def to_text(report: AuditReport) -> str:
     lines.append("Findings:")
     for finding in sorted(report.findings, key=lambda f: {"HIGH": 0, "MEDIUM": 1, "LOW": 2}.get(f.severity, 3)):
         lines.append(f"  [{finding.severity}] ({finding.category}) {finding.title}")
+        lines.append(f"    Rule: {finding.rule_id} | Confidence: {finding.confidence}")
         lines.append(f"    {finding.detail}")
         if finding.recommendation:
             lines.append(f"    Recommendation: {finding.recommendation}")
@@ -70,6 +89,8 @@ def to_text(report: AuditReport) -> str:
             lines.append(f"    CIS: {', '.join(finding.cis_controls)}")
         if finding.nist_controls:
             lines.append(f"    NIST: {', '.join(finding.nist_controls)}")
+        if finding.references:
+            lines.append(f"    References: {', '.join(finding.references)}")
     return "\n".join(lines)
 
 
@@ -190,12 +211,34 @@ def to_html(report: AuditReport) -> str:
       <p class="muted">Backup: {html.escape(report.backup_path)}</p>
       <p class="muted">Profile: {html.escape(report.profile)}</p>
       <p>Score: <b>{report.score}/100</b> <span class="grade">Grade {html.escape(report.grade)}</span></p>
+      <p>Compliance: <b>{report.stats.get('compliance_score', 0)}/100</b> <span class="grade">Grade {html.escape(str(report.stats.get('compliance_grade', 'F')))}</span></p>
       <div class="kpis">
         <div class="kpi">High findings<b>{severity_counts["HIGH"]}</b></div>
         <div class="kpi">Medium findings<b>{severity_counts["MEDIUM"]}</b></div>
         <div class="kpi">Low findings<b>{severity_counts["LOW"]}</b></div>
-        <div class="kpi">Collections parsed<b>{report.stats.get("collections_seen", 0)}</b></div>
+        <div class="kpi">Rules failed<b>{report.stats.get("rules_fail", 0)}</b></div>
       </div>
+    </div>
+    <div class="card">
+      <h2>Rule Matrix</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Status</th>
+            <th>Severity</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {''.join(
+              f"<tr><td>{html.escape(r.rule_id)}</td><td>{html.escape(r.status)}</td><td>{html.escape(r.severity)}</td><td>{html.escape(r.category)}</td><td>{html.escape(r.title)}</td><td>{html.escape(r.confidence)}</td></tr>"
+              for r in report.rules
+          )}
+        </tbody>
+      </table>
     </div>
     <div class="card">
       <h2>Findings</h2>

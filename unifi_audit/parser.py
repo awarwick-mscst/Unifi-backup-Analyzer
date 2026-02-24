@@ -31,7 +31,10 @@ def _iter_bson_stream(raw: bytes, collection_prefilter: set[bytes] | None = None
     while idx + 4 <= total:
         size = int.from_bytes(raw[idx : idx + 4], "little", signed=True)
         if size < 5 or idx + size > total:
-            break
+            # Some controller variants may embed BSON in larger binary payloads.
+            # Resync by scanning forward one byte instead of aborting at first miss.
+            idx += 1
+            continue
         blob = raw[idx : idx + size]
         if collection_prefilter:
             # Fast path: skip full BSON decode when this blob clearly does not
@@ -40,7 +43,11 @@ def _iter_bson_stream(raw: bytes, collection_prefilter: set[bytes] | None = None
             if not any(token in blob_lower for token in collection_prefilter):
                 idx += size
                 continue
-        yield BSON(blob).decode()
+        try:
+            yield BSON(blob).decode()
+        except Exception:
+            idx += 1
+            continue
         idx += size
 
 
@@ -48,6 +55,7 @@ def _normalize_collections(
     docs: Iterable[dict[str, Any]], allowlist: set[str] | None = None
 ) -> dict[str, list[dict[str, Any]]]:
     collections: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    unmatched_docs: list[dict[str, Any]] = []
     seen_any = False
     allow = {x.lower() for x in allowlist} if allowlist else None
 
@@ -75,8 +83,13 @@ def _normalize_collections(
                     collections[name].extend([d for d in value if isinstance(d, dict)])
                 continue
 
+        if isinstance(doc, dict):
+            unmatched_docs.append(doc)
+
     if not seen_any:
         raise ParseError("No BSON documents decoded from database stream.")
+    if unmatched_docs:
+        collections["__raw_docs"] = unmatched_docs
     return dict(collections)
 
 
@@ -88,7 +101,20 @@ def load_collections(
     prefilter = None
     if allowlist:
         prefilter = {name.lower().encode("utf-8") for name in allowlist if name}
-    return _normalize_collections(_iter_bson_stream(raw, collection_prefilter=prefilter), allowlist=allowlist)
+    collections = _normalize_collections(_iter_bson_stream(raw, collection_prefilter=prefilter), allowlist=allowlist)
+
+    # Compatibility fallback: if allowlisted + prefiltered parsing produced no usable
+    # collections, retry full decode to support schema variants where collection hints
+    # are not easily matched in raw BSON blobs.
+    if allowlist and not collections:
+        full = _normalize_collections(_iter_bson_stream(raw, collection_prefilter=None), allowlist=None)
+        allow_l = {name.lower() for name in allowlist}
+        filtered = {k: v for k, v in full.items() if k.lower() in allow_l}
+        # If schema names don't match allowlist aliases (common across controller
+        # versions/platforms), return full collections so downstream key-based
+        # discovery can still evaluate rules.
+        return filtered if filtered else full
+    return collections
 
 
 def find_db_file(extracted_root: pathlib.Path) -> pathlib.Path:

@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--format", choices=["text", "json", "html", "csv"], default="text", help="Output format")
     parser.add_argument(
         "--profile",
-        choices=["baseline", "cis-nist"],
+        choices=["baseline", "cis-nist", "cis-lite", "nist-lite", "strict-enterprise"],
         default="cis-nist",
         help="Policy profile for scoring and control mapping",
     )
@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Exit non-zero if overall score is below this value (0-100)",
+    )
+    parser.add_argument(
+        "--strict-unknown",
+        action="store_true",
+        help="Exit non-zero if any rule is unknown (compliance gate)",
     )
     parser.add_argument(
         "--keep-temp",
@@ -121,6 +126,15 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 4
+    if args.strict_unknown and int(report.stats.get("rules_unknown", 0)) > 0:
+        print(
+            f"STRICT UNKNOWN CHECK FAILED: {report.stats.get('rules_unknown', 0)} rule(s) are unknown.",
+            file=sys.stderr,
+        )
+        return 5
+    if report.profile == "strict-enterprise" and not bool(report.stats.get("profile_gate_pass", True)):
+        print("STRICT PROFILE GATE FAILED: strict-enterprise requires zero fail and zero unknown rules.", file=sys.stderr)
+        return 6
     return 0
 
 
